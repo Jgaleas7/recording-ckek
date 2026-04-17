@@ -11,7 +11,7 @@ import Header from './components/Header'
 import useRecordStore from './store/recorderStore'
 
 import { supabase } from './config/supabase'
-import { CAPTURERS, borderControls } from './const'
+import { CAPTURERS, CAPTURER_NAMES, borderControls } from './const'
 import TabsSection from './components/TabsSection'
 import InputSettings from './components/InputSettings'
 import useBeforeUnload from './hooks/useBeforeUnload'
@@ -28,6 +28,8 @@ function App() {
     return savedActiveRows ? JSON.parse(savedActiveRows) : {
       capturer1: null,
       capturer2: null,
+      capturer3: null,
+      capturer4: null,
     }
   })
   const [capturer, setCapturer] = useState(CAPTURERS.capturer1)
@@ -50,7 +52,7 @@ function App() {
               const { data, error } = await supabase
                 .from('capturers')
                 .select('name, record_active_id')
-                .in('name', ['capturer1', 'capturer2'])
+                .in('name', CAPTURER_NAMES)
 
               if (error) throw error
 
@@ -89,7 +91,7 @@ function App() {
         const { data, error } = await supabase
           .from('capturers')
           .select('name, record_active_id')
-          .in('name', ['capturer1', 'capturer2'])
+          .in('name', CAPTURER_NAMES)
 
         if (error) throw error
 

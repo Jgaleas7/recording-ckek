@@ -2,7 +2,7 @@ import { startProcess, stopProcess } from '../utils/processHandler.js'
 import fs from 'fs'
 import path from 'path'
 import { supabase } from '../db.js'
-import { CAPTURERS } from '../const/index.js'
+import { CAPTURERS, capturerToDecklink } from '../const/index.js'
 import { logger } from '../utils/winston.js'
 import { currentDate } from '../utils/date.js'
 
@@ -15,7 +15,7 @@ const cg = new BasicCasparCGAPI()
 
 const startRecord = async (req, res) => {
   const { capturer, nameOfVideo } = req.body;
-  const decklinkOutput = capturer === "capturer1" ? 1 : 2;
+  const decklinkOutput = capturerToDecklink(capturer);
   const commandArgs = args(decklinkOutput, nameOfVideo, null);
   try {
 

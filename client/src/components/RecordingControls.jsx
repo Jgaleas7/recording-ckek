@@ -5,7 +5,7 @@ import StopIcon from '@mui/icons-material/Stop'
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord'
 
 import { supabase } from '../config/supabase'
-import { CAPTURERS } from '../const'
+import { CAPTURER_NAMES } from '../const'
 import recordApi from '../api/recordApi'
 import useRecordStore from '../store/recorderStore'
 import Timer from './timer/Timer'
@@ -16,24 +16,29 @@ const RecordingControls = () => {
   const capturer = useRecordStore((state) => state.capturer)
   const updateNameOfVideoToSave = useRecordStore((state) => state.updateNameOfVideoToSave)
 
-  const [activeButtonCapturer1, setActiveButtonCapturer1] = useState(false)
-  const [activeButtonCapturer2, setActiveButtonCapturer2] = useState(false)
+  const [activeButtons, setActiveButtons] = useState(
+    CAPTURER_NAMES.reduce((acc, name) => ({ ...acc, [name]: false }), {})
+  )
   const [open, setOpen] = useState(false)
 
-  const {
-    seconds: secondsCapturer1,
-    minutes: minutesCapturer1,
-    hours: hoursCapturer1,
-    start: startCapturer1,
-    reset: resetCapturer1,
-  } = useStopwatch({ autoStart: false })
-  const {
-    seconds: secondsCapturer2,
-    minutes: minutesCapturer2,
-    hours: hoursCapturer2,
-    start: startCapturer2,
-    reset: resetCapturer2,
-  } = useStopwatch({ autoStart: false })
+  const sw1 = useStopwatch({ autoStart: false })
+  const sw2 = useStopwatch({ autoStart: false })
+  const sw3 = useStopwatch({ autoStart: false })
+  const sw4 = useStopwatch({ autoStart: false })
+
+  const stopwatches = {
+    capturer1: sw1,
+    capturer2: sw2,
+    capturer3: sw3,
+    capturer4: sw4,
+  }
+
+  const sw = stopwatches[capturer]
+  const isActive = activeButtons[capturer]
+
+  const setActive = (name, value) => {
+    setActiveButtons((prev) => ({ ...prev, [name]: value }))
+  }
 
   const handleOpenDialog = () => {
     setOpen(true)
@@ -67,14 +72,8 @@ const RecordingControls = () => {
       })
     }
     try {
-
-      if (capturer === CAPTURERS.capturer1) {
-        setActiveButtonCapturer1(!activeButtonCapturer1)
-        updateNameOfVideoToSave(capturer, tempVideoName)
-      } else {
-        setActiveButtonCapturer2(!activeButtonCapturer2)
-        updateNameOfVideoToSave(capturer, tempVideoName)
-      }
+      setActive(capturer, true)
+      updateNameOfVideoToSave(capturer, tempVideoName)
 
       const res = await recordApi.post('/recordings/record', {
         capturer,
@@ -82,19 +81,14 @@ const RecordingControls = () => {
       })
 
       if (res.status == 200) {
-        if (capturer === CAPTURERS.capturer1) {
-          startCapturer1()
-        } else {
-          startCapturer2()
-          setActiveButtonCapturer2(!activeButtonCapturer2)
-        }
+        sw.start()
         Toast({
           type: 'success',
           message: `${res.data.data}`,
         })
       }
     } catch (error) {
-      setActiveButtonCapturer1(false)
+      setActive(capturer, false)
       console.log(error)
       if (error.status !== 200) {
         Toast({
@@ -108,15 +102,8 @@ const RecordingControls = () => {
   const handleStopRecord = async () => {
     try {
       const tempVideoName = `Autorec-${Date.now()}`
-      if (capturer === CAPTURERS.capturer1) {
-        resetCapturer1(undefined, false)
-        setActiveButtonCapturer1(!activeButtonCapturer1)
-        /* updateNameOfVideoToSave(capturer, tempVideoName) */
-      } else {
-        resetCapturer2(undefined, false)
-        setActiveButtonCapturer2(!activeButtonCapturer2)
-        /* updateNameOfVideoToSave(capturer, tempVideoName) */
-      }
+      sw.reset(undefined, false)
+      setActive(capturer, false)
 
       const res = await recordApi.post('/recordings/stop', {
         capturer,
@@ -150,51 +137,24 @@ const RecordingControls = () => {
         <Typography variant='h6' mr={1}>
           Duration:{' '}
         </Typography>
-        {capturer == CAPTURERS.capturer1 ? (
-          <Typography variant='h4'>
-            <Timer seconds={secondsCapturer1} minutes={minutesCapturer1} hours={hoursCapturer1} />
-          </Typography>
-        ) : (
-          <Typography variant='h4'>
-            <Timer seconds={secondsCapturer2} minutes={minutesCapturer2} hours={hoursCapturer2} />
-          </Typography>
-        )}
+        <Typography variant='h4'>
+          <Timer seconds={sw.seconds} minutes={sw.minutes} hours={sw.hours} />
+        </Typography>
       </Box>
-      {capturer == CAPTURERS.capturer1 ? (
-        <>
-          <Button
-            variant='contained'
-            color='error'
-            size='large'
-            startIcon={<FiberManualRecordIcon />}
-            onClick={handleStartRecord}
-            disabled={activeButtonCapturer1}
-            sx={{ mr: 2 }}
-          >
-            REC
-          </Button>
-          <Button variant='contained' size='large' startIcon={<StopIcon />} disabled={!activeButtonCapturer1} onClick={handleStopRecord}>
-            STOP
-          </Button>
-        </>
-      ) : (
-        <>
-          <Button
-            variant='contained'
-            color='error'
-            size='large'
-            startIcon={<FiberManualRecordIcon />}
-            onClick={handleStartRecord}
-            disabled={activeButtonCapturer2}
-            sx={{ mr: 2 }}
-          >
-            REC
-          </Button>
-          <Button variant='contained' size='large' startIcon={<StopIcon />} disabled={!activeButtonCapturer2} onClick={handleStopRecord}>
-            STOP
-          </Button>
-        </>
-      )}
+      <Button
+        variant='contained'
+        color='error'
+        size='large'
+        startIcon={<FiberManualRecordIcon />}
+        onClick={handleStartRecord}
+        disabled={isActive}
+        sx={{ mr: 2 }}
+      >
+        REC
+      </Button>
+      <Button variant='contained' size='large' startIcon={<StopIcon />} disabled={!isActive} onClick={handleStopRecord}>
+        STOP
+      </Button>
       <DialogToSaveRecord open={open} handleCloseDialog={handleCloseDialog} />
     </>
   )

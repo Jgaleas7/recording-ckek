@@ -9,7 +9,9 @@ const useRecordStore = create((set, get) => ({
   filteredRecords: [],
   nameOfVideoToSave: {
     capturer1: '',
-    capturer2: ''
+    capturer2: '',
+    capturer3: '',
+    capturer4: ''
   },
   allRecords: (records) => set({
     records: [...records]

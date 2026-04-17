@@ -91,7 +91,7 @@ const AddRecord = ({ open, handleCloseDialog }) => {
 
       const startRecordAt = dayjs(data?.startAt)
       const endRecordAt = dayjs(data?.endAt)
-      const selectedCapturer = Number(data?.capturer) == 1 ? 'capturer1' : 'capturer2'
+      const selectedCapturer = `capturer${Number(data?.capturer)}`
       const recordsToInsertDB = data?.days?.map((day) => {
         return {
           name: data?.name,
@@ -150,6 +150,8 @@ const AddRecord = ({ open, handleCloseDialog }) => {
               <Select {...field} labelId='select-capturer' label='Choose capturer'>
                 <MenuItem value={1}>Capturer 1</MenuItem>
                 <MenuItem value={2}>Capturer 2</MenuItem>
+                <MenuItem value={3}>Capturer 3</MenuItem>
+                <MenuItem value={4}>Capturer 4</MenuItem>
               </Select>
             )}
           />

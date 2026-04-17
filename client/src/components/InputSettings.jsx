@@ -1,4 +1,5 @@
 import { FormControl, InputLabel, MenuItem, Select, Typography, Box } from '@mui/material'
+import { CAPTURER_NAMES } from '../const'
 
 const InputSettings = ({ capturer, format, handleChangeCapturer, handleChangeFormat }) => {
   return (
@@ -24,8 +25,9 @@ const InputSettings = ({ capturer, format, handleChangeCapturer, handleChangeFor
       <FormControl fullWidth size='small' margin='dense'>
         <InputLabel id='select-capturer'>Capturer</InputLabel>
         <Select labelId='select-capturer' id='capturer' defaultValue={1} value={capturer} label='Capturer' onChange={handleChangeCapturer}>
-          <MenuItem value={'capturer1'}>Capturer 1</MenuItem>
-          <MenuItem value={'capturer2'}>Capturer 2</MenuItem>
+          {CAPTURER_NAMES.map((name, idx) => (
+            <MenuItem key={name} value={name}>{`Capturer ${idx + 1}`}</MenuItem>
+          ))}
         </Select>
       </FormControl>
       <FormControl fullWidth size='small' margin='dense'>

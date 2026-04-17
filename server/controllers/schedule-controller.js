@@ -4,6 +4,7 @@ import axios from 'axios';
 import { currentDate } from '../utils/date.js';
 import { startProcess, stopProcess } from '../utils/processHandler.js';
 import { args } from '../utils/args.js';
+import { capturerToDecklink } from '../const/index.js';
 
 /**
  * Constants and configurations
@@ -83,7 +84,7 @@ const renameFile = async (capturer, nameOfFile) => {
 
 const controlCapture = async (action, params = {}, capturer) => {
   try {
-    const decklinkOutput = capturer?.name === "capturer1" ? 1 : 2;
+    const decklinkOutput = capturerToDecklink(capturer?.name);
     if (action === 'start') {      
       try {
         await new Promise(resolve => setTimeout(resolve, 1000));

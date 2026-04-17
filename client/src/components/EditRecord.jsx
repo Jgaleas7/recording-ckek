@@ -75,7 +75,7 @@ const EditRecord = ({ open, handleCloseDialog, selectedRow }) => {
       const startRecordAt = dayjs(data?.startAt)
       const endRecordAt = dayjs(data?.endAt)
       const chunkTime = data?.chunkTime
-      const selectedCapturer = Number(data?.capturer) == 1 ? 'capturer1' : 'capturer2'
+      const selectedCapturer = `capturer${Number(data?.capturer)}`
 
       //1. Borrar los registros de la tabla records
       const { data: recordsDelete, error: errorToDelete, status } = await supabase.from('records').delete().eq('name', data?.name).select()
@@ -141,6 +141,8 @@ const EditRecord = ({ open, handleCloseDialog, selectedRow }) => {
               <Select {...field} labelId='select-capturer' label='Elija el capturer'>
                 <MenuItem value={1}>Capturer 1</MenuItem>
                 <MenuItem value={2}>Capturer 2</MenuItem>
+                <MenuItem value={3}>Capturer 3</MenuItem>
+                <MenuItem value={4}>Capturer 4</MenuItem>
               </Select>
             )}
           />

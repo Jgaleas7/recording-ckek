@@ -60,6 +60,8 @@ export const args = (decklinkOutput, nameOfVideo, chunkTimeInSeconds) => {
     '-color_primaries:v', 'bt709', '-color_trc:v', 'bt709', '-colorspace:v', 'bt709',
     '-c:a', 'pcm_s24le',
     '-f', 'mxf',
+    // add threads 0
+    '-threads', '0',
     `C:\\recordings\\${currentDate()}_${Date.now()}_${nameOfVideo}.mxf`,
   ]
 }
