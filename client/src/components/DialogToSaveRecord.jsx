@@ -16,6 +16,7 @@ const schema = yup.object().shape({
 
 const DialogToSaveRecord = ({ open, handleCloseDialog }) => {
   const capturer = useRecordStore((state) => state.capturer)
+  const format = useRecordStore((state) => state.format)
   const nameOfVideoToSave = useRecordStore((state) => state.nameOfVideoToSave)
   const updateNameOfVideoToSave = useRecordStore((state) => state.updateNameOfVideoToSave)
 
@@ -61,23 +62,24 @@ const DialogToSaveRecord = ({ open, handleCloseDialog }) => {
     try {
       const { name, destination } = data
       const basePath = 'C:\\recordings\\'
+      const ext = format === 'mxf' ? 'mxf' : 'mp4'
 
       const newName = name === '' ? nameOfVideoToSave[capturer] : name
-      const fullFileName = `${basePath}${newName}.mxf`
+      const fullFileName = `${basePath}${newName}.${ext}`
 
       const res = await renameApi.post('', {
-        FileName: `${nameOfVideoToSave[capturer]}.mxf`,
+        FileName: `${nameOfVideoToSave[capturer]}.${ext}`,
         NewFileName: fullFileName
       })
 
-      if (res.status !== 200) throw new Error('Error al renombrar la grabación')
+      if (res.status !== 200) throw new Error('Error renaming the recording')
 
       updateNameOfVideoToSave(capturer, '')
-      Toast({ message: 'El nombre de la grabación se guardo con éxito', type: 'success' })
+      Toast({ message: 'The recording name was saved successfully', type: 'success' })
       reset({ name: '', destination: '' })
       handleCloseDialog()
     } catch (error) {
-      Toast({ message: 'Error al renombrar las grabaciones', type: 'error' })
+      Toast({ message: 'Error renaming the recording', type: 'error' })
       reset({ name: '', destination: '' })
       updateNameOfVideoToSave(capturer, '')
       handleCloseDialog()
@@ -92,13 +94,14 @@ const DialogToSaveRecord = ({ open, handleCloseDialog }) => {
 
     try {
       const name = `Autorec-${Date.now()}`
+      const ext = format === 'mxf' ? 'mxf' : 'mp4'
 
       const res = await renameApi.post('', {
-        FileName: `${nameOfVideoToSave[capturer]}.mxf`,
-        NewFileName: `C:\\recordings\\${name}.mxf`
+        FileName: `${nameOfVideoToSave[capturer]}.${ext}`,
+        NewFileName: `C:\\recordings\\${name}.${ext}`
       })
 
-      if (res.status !== 200) throw new Error('Error al renombrar la grabación')
+      if (res.status !== 200) throw new Error('Error renaming the recording')
 
       updateNameOfVideoToSave(capturer, '')
       reset({ name: '' })
@@ -176,7 +179,7 @@ const DialogToSaveRecord = ({ open, handleCloseDialog }) => {
                   Select destination
                 </MenuItem>
                 <MenuItem value="mcr">MCR</MenuItem>
-                <MenuItem value="clic">Clic</MenuItem>
+                <MenuItem selected value="clic">Clic</MenuItem>
               </Select>
               {errors.destination && (
                 <FormHelperText error>

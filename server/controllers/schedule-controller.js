@@ -63,14 +63,16 @@ const updateCapturerStatus = async (capturer, isActive, recordId = null) => {
   }
 };
 
-const renameFile = async (capturer, nameOfFile) => {
+const renameFile = async (capturer, nameOfFile, format = 'mp4') => {
   try {
-    // Wait 3 seconds to allow ffmpeg to flush buffer and release Windows file lock
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    
+    // Wait 6s for ffmpeg's graceful shutdown ('q' on stdin) to flush + finalize the file
+    // and for Windows to release the file lock. With the old hard-kill this was 3s.
+    await new Promise(resolve => setTimeout(resolve, 6000));
+
+    const ext = format === 'mxf' ? 'mxf' : 'mp4'
     const res = await axios.post(`${RENAME_API_URL}`, {
-      FileName: `${nameOfFile}.mxf`,
-      NewFileName: `C:\\recordings\\${nameOfFile}.mxf`
+      FileName: `${nameOfFile}.${ext}`,
+      NewFileName: `C:\\recordings\\${nameOfFile}.${ext}`
     });
 
     if (res.status !== 200) throw new Error('Unknown error renaming file');
@@ -82,37 +84,37 @@ const renameFile = async (capturer, nameOfFile) => {
   }
 };
 
-const controlCapture = async (action, params = {}, capturer) => {
+const controlCapture = async (action, params = {}, capturer, format = 'mp4') => {
   try {
     const decklinkOutput = capturerToDecklink(capturer?.name);
-    if (action === 'start') {      
+    if (action === 'start') {
       try {
         await new Promise(resolve => setTimeout(resolve, 1000));
         stopProcess(capturer.name);
       } catch (stopError) {
         logError('controlCapture (stop before start)', stopError);
       }
-      
+
       await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      const commandArgs = args(decklinkOutput, params.nameOfVideo, null);
-      const { status, message } = startProcess({ 
-         capturer: capturer.name, 
-         command: 'C:/ffmpeg/ffmpeg.exe', 
-         args: commandArgs,
-         is_automatic: true
+
+      const commandArgs = args(decklinkOutput, params.nameOfVideo, null, format);
+      const { status, message } = startProcess({
+        capturer: capturer.name,
+        command: 'C:/ffmpeg/ffmpeg.exe',
+        args: commandArgs,
+        is_automatic: true
       });
-      
+
       if (status !== 200) throw new Error(message);
       return { status, data: { message } };
-      
+
     } else if (action === 'stop') {
       try {
         await new Promise(resolve => setTimeout(resolve, 1000));
         const { status, message } = stopProcess(capturer.name);
-        
+
         if (status === 404) {
-          console.log('No había grabación en curso para detener');
+          console.log('There was no recording in progress to stop');
         }
         return { status: 200, data: { message } };
       } catch (stopError) {
@@ -129,7 +131,7 @@ const controlCapture = async (action, params = {}, capturer) => {
  * Schedules the start of a recording task
  */
 const scheduleStartTask = (task, capturer, index) => {
-  const { id, day, name, start_at } = task;
+  const { id, day, name, start_at, format = 'mp4' } = task;
 
   const cronPattern = formatCronPattern(start_at, day);
 
@@ -149,7 +151,7 @@ const scheduleStartTask = (task, capturer, index) => {
       const nameOfFile = `${name}_${index}`;
       await controlCapture('start', {
         nameOfVideo: nameOfFile
-      }, capturer);
+      }, capturer, format);
       const result = await updateCapturerStatus(capturer, true, id);
 
       if (result.success) {
@@ -176,7 +178,7 @@ const scheduleStartTask = (task, capturer, index) => {
  * Schedules the end of a recording task
  */
 const scheduleEndTask = (task, capturer, index) => {
-  const { id, day, name, end_at } = task;
+  const { id, day, name, end_at, format = 'mp4' } = task;
 
   const cronPattern = formatCronPattern(end_at, day);
 
@@ -194,13 +196,13 @@ const scheduleEndTask = (task, capturer, index) => {
         return;
       }
 
-      await controlCapture('stop', {}, capturer);
+      await controlCapture('stop', {}, capturer, format);
       const result = await updateCapturerStatus(capturer, false);
 
       const nameOfFile = `${name}_${index}`;
 
       if (result.success) {
-        await renameFile(capturer, nameOfFile);
+        await renameFile(capturer, nameOfFile, format);
         console.log(`Ending task "${name}" on ${day} at ${end_at}`);
       }
     } catch (error) {
@@ -231,11 +233,11 @@ const parseTime = (timeStr) => {
 
 const convertSecondsToTime = (totalSeconds) => {
   if (totalSeconds < 0) totalSeconds = 0;
-  
+
   const hours = Math.floor(totalSeconds / 3600) % 24;
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
-  
+
   return [
     hours.toString().padStart(2, '0'),
     minutes.toString().padStart(2, '0'),
@@ -268,13 +270,13 @@ const calculateChunks = (startTimeStr, endTimeStr, chunkDuration) => {
 
     currentStart = currentEnd; // Espacio de 1 segundo entre chunks
   }
-  console.log(`Chunks calculados:`, chunks);
+  console.log(`Chunks calculated:`, chunks);
   return chunks;
 };
 
 const scheduleChunkStart = (task, capturer, startTime, day, chunkIndex) => {
   const cronPattern = formatCronPattern(startTime, day);
-  const { id, name } = task;
+  const { id, name, format = 'mp4' } = task;
 
   const taskFunction = async () => {
     try {
@@ -294,7 +296,7 @@ const scheduleChunkStart = (task, capturer, startTime, day, chunkIndex) => {
 
       await controlCapture('start', {
         nameOfVideo: nameOfFile
-      }, capturer);
+      }, capturer, format);
 
       await updateCapturerStatus(capturer, true, id);
       console.log(`Inicio chunk ${chunkIndex + 1} de "${name}" a las ${startTime}`);
@@ -317,7 +319,7 @@ const scheduleChunkStart = (task, capturer, startTime, day, chunkIndex) => {
 
 const scheduleChunkEnd = (task, capturer, endTime, day, chunkIndex) => {
   const cronPattern = formatCronPattern(endTime, day);
-  const { id, name } = task;
+  const { id, name, format = 'mp4' } = task;
 
   const taskFunction = async () => {
     try {
@@ -334,10 +336,10 @@ const scheduleChunkEnd = (task, capturer, endTime, day, chunkIndex) => {
       }
 
       const nameOfFile = `${name}_segmento_${chunkIndex + 1}`;
-      await controlCapture('stop', {}, capturer);
+      await controlCapture('stop', {}, capturer, format);
       await updateCapturerStatus(capturer, false);
 
-      await renameFile(capturer, nameOfFile);
+      await renameFile(capturer, nameOfFile, format);
       console.log(`Fin chunk ${chunkIndex + 1} de "${name}" a las ${endTime}`);
     } catch (error) {
       logError(`scheduleChunkEnd ${name}`, error);
@@ -590,10 +592,10 @@ const stopTask = async (req, res) => {
     // Update capturer status
     await updateCapturerStatus(capturer, false, null);
 
-    res.status(200).json({ message: 'Tarea detenida exitosamente' });
+    res.status(200).json({ message: 'Task stopped successfully' });
   } catch (error) {
     logError('stopTask', error);
-    res.status(500).json({ message: 'Error al detener la tarea' });
+    res.status(500).json({ message: 'Error stopping the task' });
   }
 };
 
@@ -619,11 +621,11 @@ const stopSchedules = async (req, res) => {
     // Detener la grabación actual
     try {
       await controlCapture('stop', {}, capturer);
-      console.log(`Grabación detenida para el capturer ${capturerName}`);
+      console.log(`Recording stopped for capturer ${capturerName}`);
     } catch (stopError) {
       // Si hay error 400, significa que no había grabación en curso
       if (stopError.response && stopError.response.status === 400) {
-        console.log(`No hay grabación activa para detener en el capturer ${capturerName}`);
+        console.log(`There is no active recording to stop in capturer ${capturerName}`);
       } else {
         throw stopError;
       }
@@ -648,19 +650,19 @@ const stopSchedules = async (req, res) => {
           // pero empezando desde la próxima vez según su programación cron
           scheduleTask(activeRecordId);
 
-          console.log(`Chunks futuros inmediatos cancelados para la tarea ${activeRecordId}`);
+          console.log(`Immediate future chunks cancelled for task ${activeRecordId}`);
         }
       });
     }
 
     res.status(200).json({
-      message: 'Grabación actual detenida exitosamente. Las demás tareas programadas continuarán normalmente.',
+      message: 'Current recording stopped successfully. The other scheduled tasks will continue normally.',
       capturer: capturerName
     });
   } catch (error) {
     logError('stopSchedules', error);
     res.status(500).json({
-      message: 'Error al detener la grabación',
+      message: 'Error stopping the recording',
       error: error.message
     });
   }

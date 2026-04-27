@@ -7,10 +7,13 @@ import {
   DialogActions,
   Button
 } from '@mui/material';
+import { CAPTURER_NAMES } from '../const';
+import recordApi from '../api/recordApi';
 
 const useBeforeUnload = () => {
   const [showModal, setShowModal] = useState(false);
   const [confirmedNavigation, setConfirmedNavigation] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
   useEffect(() => {
     const handleBeforeUnload = (e) => {
@@ -37,7 +40,18 @@ const useBeforeUnload = () => {
     }
   }, [confirmedNavigation]);
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
+    setClearing(true);
+    // Best-effort: clear every capturer so any in-flight recording gets
+    // gracefully stopped and renamed to a Recovered-* file before exit.
+    try {
+      await Promise.allSettled(
+        CAPTURER_NAMES.map((name) =>
+          recordApi.post('/recordings/clear', { capturer: name })
+        )
+      );
+    } catch (_) { /* best effort */ }
+    setClearing(false);
     setConfirmedNavigation(true);
     setShowModal(false);
     // Forzar el cierre (puede no funcionar en todos los navegadores debido a políticas de seguridad)
@@ -64,11 +78,11 @@ const useBeforeUnload = () => {
         </DialogContentText>
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleCancel} color="primary">
+        <Button onClick={handleCancel} color="primary" disabled={clearing}>
           Cancelar
         </Button>
-        <Button onClick={handleConfirm} color="error" autoFocus>
-          Salir
+        <Button onClick={handleConfirm} color="error" autoFocus disabled={clearing}>
+          {clearing ? 'Cerrando…' : 'Salir'}
         </Button>
       </DialogActions>
     </Dialog>

@@ -14,6 +14,7 @@ import DialogToSaveRecord from './DialogToSaveRecord'
 
 const RecordingControls = () => {
   const capturer = useRecordStore((state) => state.capturer)
+  const format = useRecordStore((state) => state.format)
   const updateNameOfVideoToSave = useRecordStore((state) => state.updateNameOfVideoToSave)
 
   const [activeButtons, setActiveButtons] = useState(
@@ -60,7 +61,7 @@ const RecordingControls = () => {
       if (is_active || is_automatic) {
         Toast({
           type: 'info',
-          message: 'No se puede grabar porque ya hay una grabación en curso.',
+          message: 'Cannot record because there is already a recording in progress.',
         })
         return
       }
@@ -77,7 +78,8 @@ const RecordingControls = () => {
 
       const res = await recordApi.post('/recordings/record', {
         capturer,
-        nameOfVideo: tempVideoName
+        nameOfVideo: tempVideoName,
+        format,
       })
 
       if (res.status == 200) {
@@ -108,6 +110,7 @@ const RecordingControls = () => {
       const res = await recordApi.post('/recordings/stop', {
         capturer,
         nameOfVideo: tempVideoName,
+        format,
       })
 
       if (res.status == 200) {

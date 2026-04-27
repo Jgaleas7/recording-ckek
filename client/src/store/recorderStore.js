@@ -5,6 +5,7 @@ import { mountStoreDevtool } from 'simple-zustand-devtools'
 const useRecordStore = create((set, get) => ({
   activeTabIndex: 0,
   capturer: 'capturer1',
+  format: 'mp4',
   records: [],
   filteredRecords: [],
   nameOfVideoToSave: {
@@ -62,6 +63,7 @@ const useRecordStore = create((set, get) => ({
     }),
   changeActiveTabIndex: (tabIndex) => set(() => ({ activeTabIndex: tabIndex })),
   changeCapturer: (capturer = 'capturer1') => set(() => ({ capturer })),
+  changeFormat: (format = 'mp4') => set(() => ({ format })),
   updateNameOfVideoToSave: (capturer = 'capturer1', name) => set((state) => ({
     nameOfVideoToSave: { ...state.nameOfVideoToSave, [capturer]: name }
   })),

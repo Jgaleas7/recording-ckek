@@ -28,37 +28,37 @@ export const days = {
 
 export const daysOptions = [
   {
-    label: 'Lunes',
+    label: 'Monday',
     value: 'Monday',
   },
 
   {
-    label: 'Martes',
+    label: 'Tuesday',
     value: 'Tuesday',
   },
 
   {
-    label: 'Miercoles',
+    label: 'Wednesday',
     value: 'Wednesday',
   },
 
   {
-    label: 'Jueves',
+    label: 'Thursday',
     value: 'Thursday',
   },
 
   {
-    label: 'Viernes',
+    label: 'Friday',
     value: 'Friday',
   },
 
   {
-    label: 'Sábado',
+    label: 'Saturday',
     value: 'Saturday',
   },
 
   {
-    label: 'Domingo',
+    label: 'Sunday',
     value: 'Sunday',
   },
 ]

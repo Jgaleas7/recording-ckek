@@ -35,7 +35,7 @@ const ScreenShareRecorder = () => {
       recorder.start();
       setRecording(true);
     } catch (error) {
-      console.error('Error al capturar pantalla:', error);
+      console.error('Error capturing screen:', error);
     }
   };
 

@@ -13,33 +13,40 @@ import { args } from '../utils/args.js'
 const cg = new BasicCasparCGAPI()
 //const connection = new CasparCG()
 
+// In-memory tracking of the temp name + format per active recording.
+// Survives the lifetime of the Node process. Used by clearCapturer to find
+// and rename any file left behind when a recording is interrupted.
+const activeRecordings = new Map() // capturer → { tempName, format }
+
 const startRecord = async (req, res) => {
-  const { capturer, nameOfVideo } = req.body;
+  const { capturer, nameOfVideo, format = 'mp4' } = req.body;
   const decklinkOutput = capturerToDecklink(capturer);
-  const commandArgs = args(decklinkOutput, nameOfVideo, null);
+  const commandArgs = args(decklinkOutput, nameOfVideo, null, format);
   try {
 
     const { status, message } = startProcess({ capturer, command: 'C:/ffmpeg/ffmpeg.exe', args: commandArgs })
-    
+
     if (status !== 200) {
       return res.status(status).json({ error: message })
     }
 
+    activeRecordings.set(capturer, { tempName: nameOfVideo, format });
+
     const { error } = await supabase.from('capturers').update({ is_active: true }).eq('name', capturer);
 
     if (error) {
-      logger.error(`Error al actualizar el estado del capturer ${capturer}: ${error.message}`);
-      return res.status(500).json({ error: 'Error al actualizar el estado del capturer' });
+      logger.error(`Error updating capturer ${capturer}: ${error.message}`);
+      return res.status(500).json({ error: 'Error updating capturer' });
     }
 
-    logger.info(`La grabacion del ${capturer} ha iniciado correctamente`);
-    return res.status(200).json({ data: `La grabacion del ${capturer} ha iniciado correctamente` });
+    logger.info(`The recording of ${capturer} has started correctly`);
+    return res.status(200).json({ data: `The recording of ${capturer} has started correctly` });
 
   } catch (error) {
     console.log("error catch");
     //console.log(error);
     //logger.error(`Error al iniciar la grabación: ${error.message}`);
-    return res.status(500).json({ error: 'Error al iniciar la grabación' });
+    return res.status(500).json({ error: 'Error starting the recording' });
   }
 }
 
@@ -48,7 +55,7 @@ const stopRecord = async (req, res) => {
 
   try {
     const { status, message } = stopProcess(capturer);
-    
+
     if (status === 404) {
       console.log(`Stop command: ${message}`);
     }
@@ -61,26 +68,87 @@ const stopRecord = async (req, res) => {
 
     const { error } = await supabase.from('capturers').update(rawInfo).eq('name', capturer);
     if (error) {
-      logger.error(`Error al actualizar el estado del capturer ${capturer}: ${error.message}`);
-      return res.status(500).json({ error: 'Error al actualizar estado en base de datos' });
+      logger.error(`Error updating capturer ${capturer}: ${error.message}`);
+      return res.status(500).json({ error: 'Error updating capturer' });
     }
 
-    logger.info(`La grabacion del ${capturer} se detuvo correctamente`);
-    return res.status(200).json({ data: `La grabacion del ${capturer} se detuvo correctamente` });
+    logger.info(`The recording of ${capturer} has stopped correctly`);
+    return res.status(200).json({ data: `The recording of ${capturer} has stopped correctly` });
 
   } catch (error) {
     console.log(error);
-    logger.error(`Error al detener la grabación: ${error.message || 'Error desconocido'}`);
-    return res.status(500).json({ error: 'Error al detener la grabación' });
+    logger.error(`Error stopping the recording: ${error.message || 'Error desconocido'}`);
+    return res.status(500).json({ error: 'Error stopping the recording' });
   }
 }
+
+const clearCapturer = async (req, res) => {
+  const { capturer } = req.body;
+  if (!capturer) {
+    return res.status(400).json({ error: 'capturer is required' });
+  }
+
+  const tracked = activeRecordings.get(capturer);
+  let recoveredName = null;
+
+  try {
+    // 1. Graceful stop (writes 'q' to ffmpeg stdin, hard-kill fallback after 5s)
+    stopProcess(capturer);
+
+    // 2. Wait for ffmpeg to flush + Windows to release the file lock
+    await new Promise((r) => setTimeout(r, 6000));
+
+    // 3. If we know the temp name, find and rename the orphan file
+    if (tracked) {
+      const recordingsDir = 'C:\\recordings';
+      const ext = tracked.format === 'mxf' ? 'mxf' : 'mp4';
+      const suffix = `${tracked.tempName}.${ext}`;
+
+      try {
+        const files = fs.readdirSync(recordingsDir);
+        const matched = files.find((f) => f.endsWith(suffix));
+        if (matched) {
+          const oldPath = path.join(recordingsDir, matched);
+          recoveredName = `${currentDate()}_Recovered-${capturer}-${Date.now()}.${ext}`;
+          const newPath = path.join(recordingsDir, recoveredName);
+          fs.renameSync(oldPath, newPath);
+          logger.info(`clearCapturer: recovered ${matched} as ${recoveredName}`);
+        }
+      } catch (renameErr) {
+        logger.error(`clearCapturer rename failure: ${renameErr.message}`);
+      }
+
+      activeRecordings.delete(capturer);
+    }
+
+    // 4. Reset DB row regardless (idempotent)
+    const { error } = await supabase
+      .from('capturers')
+      .update({ is_active: false, is_automatic: false, record_active_id: null })
+      .eq('name', capturer);
+
+    if (error) {
+      logger.error(`clearCapturer DB reset (${capturer}): ${error.message}`);
+    }
+
+    return res.status(200).json({
+      data: recoveredName
+        ? `Capturer ${capturer} cleared. Recovered: ${recoveredName}`
+        : `Capturer ${capturer} cleared.`,
+      recoveredName,
+    });
+  } catch (error) {
+    logger.error(`clearCapturer ${capturer}: ${error.message || error}`);
+    return res.status(500).json({ error: 'Error clearing capturer' });
+  }
+};
 
 const renameVideo = (req, res) => {
   const { FileName, NewFileName } = req.body
   try {
     const recordingsDir = 'C:\\recordings';
     let oldPath = FileName.includes(':\\') ? FileName : path.join(recordingsDir, FileName);
-    
+
     // Si el archivo no existe exactamente con ese nombre, buscar concidencias por el prefijo de la fecha
     if (!fs.existsSync(oldPath)) {
       const baseName = path.basename(FileName);
@@ -93,7 +161,7 @@ const renameVideo = (req, res) => {
 
     let newBaseName = path.basename(NewFileName);
     const datePrefix = `${currentDate()}_`;
-    
+
     if (!newBaseName.startsWith(datePrefix)) {
       newBaseName = `${datePrefix}${newBaseName}`;
     }
@@ -105,11 +173,11 @@ const renameVideo = (req, res) => {
         logger.error(`Rename failure: ${err.message}`)
         return res.status(400).json({ error: err.message })
       }
-      logger.info(`La grabación se renombro a ${NewFileName}`)
+      logger.info(`The recording was renamed to ${NewFileName}`)
       return res.status(200).json({ message: 'Rename complete!' })
     });
   } catch (error) {
-    logger.error(`Rename: error al renombar video -> ${error.message}`)
+    logger.error(`Rename: error renaming video -> ${error.message}`)
     return res.status(400).json(error.message)
   }
 }
@@ -433,7 +501,7 @@ const stopRecord = async (req, res) => {
 }
  */
 
-export { startRecord, stopRecord, renameVideo }
+export { startRecord, stopRecord, renameVideo, clearCapturer }
 
 
 

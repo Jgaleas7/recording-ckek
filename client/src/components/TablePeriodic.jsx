@@ -102,35 +102,35 @@ const TablePeriodic = () => {
 
   const columnGroupingModel = [
     {
-      groupId: 'Lunes',
+      groupId: 'Monday',
       children: [{ field: 'startMonday' }, { field: 'endMonday' }],
     },
     {
-      groupId: 'Martes',
+      groupId: 'Tuesday',
       children: [{ field: 'startTuesday' }, { field: 'endTuesday' }],
     },
     {
-      groupId: 'Miércoles',
+      groupId: 'Wednesday',
       children: [{ field: 'startWednesday' }, { field: 'endWednesday' }],
     },
     {
-      groupId: 'Jueves',
+      groupId: 'Thursday',
       children: [{ field: 'startThursday' }, { field: 'endThursday' }],
     },
     {
-      groupId: 'Viernes',
+      groupId: 'Friday',
       children: [{ field: 'startFriday' }, { field: 'endFriday' }],
     },
     {
-      groupId: 'Sábado',
+      groupId: 'Saturday',
       children: [{ field: 'startSaturday' }, { field: 'endSaturday' }],
     },
     {
-      groupId: 'Domingo',
+      groupId: 'Sunday',
       children: [{ field: 'startSunday' }, { field: 'endSunday' }],
     },
     {
-      groupId: 'Acciones',
+      groupId: 'Actions',
       children: [{ field: 'actions' }],
     },
   ]
@@ -160,10 +160,10 @@ const TablePeriodic = () => {
         deleteRecord(item.id)
       })
 
-      Toast({ type: 'success', message: 'La grabación se eliminó correctamente' })
+      Toast({ type: 'success', message: 'The recording was deleted successfully' })
     } catch (error) {
       console.log(error)
-      Toast({ type: 'error', message: 'Error al eliminar la grabación' })
+      Toast({ type: 'error', message: 'Error deleting the recording' })
     }
   }
 
@@ -191,6 +191,7 @@ const TablePeriodic = () => {
               transformedData[key] = {
                 name: item.name,
                 capturer: item.capturer_id,
+                format: item.format ?? 'mp4',
                 days: [],
                 startAt: item.start_at,
                 endAt: item.end_at,

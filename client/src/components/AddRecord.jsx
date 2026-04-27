@@ -31,6 +31,7 @@ import recordApi from '../api/recordApi'
 const schema = yup.object().shape({
   name: yup.string().required('El nombre es obligatorio'),
   capturer: yup.string().required('El capturer es obligatorio'),
+  format: yup.string().oneOf(['mp4', 'mxf']).required('El formato es obligatorio'),
   chunkTime: yup.string(),
   days: yup.array().of(yup.string()).min(1, 'Selecciona al menos 1 día de grabación'),
   startAt: yup.date().required('La hora de inicio es obligatoria'),
@@ -100,6 +101,7 @@ const AddRecord = ({ open, handleCloseDialog }) => {
           end_at: endRecordAt.format('HH:mm'),
           chunk_time: checkedChunk && data?.chunkTime !== '00:00' ? data?.chunkTime : null,
           capturer_id: Number(data?.capturer),
+          format: data?.format,
         }
       })
 
@@ -120,7 +122,7 @@ const AddRecord = ({ open, handleCloseDialog }) => {
       }
       Toast({ message: 'La grabación se guardo con éxito', type: 'success' })
       setCheckedChunk(false)
-      reset({ name: '', capturer: '', chunkTime: '00:00', days: [] })
+      reset({ name: '', capturer: '', format: 'mp4', chunkTime: '00:00', days: [] })
     } catch (error) {
       Toast({ message: 'Error al guardar las grabaciones', type: 'error' })
       console.log(error)
@@ -156,6 +158,22 @@ const AddRecord = ({ open, handleCloseDialog }) => {
             )}
           />
           {errors?.capturer && <FormHelperText>{errors?.capturer?.message}</FormHelperText>}
+        </FormControl>
+
+        <FormControl fullWidth sx={{ mb: 2 }} size='small' error={Boolean(errors?.format?.message)}>
+          <InputLabel id='select-format'>Choose format</InputLabel>
+          <Controller
+            name='format'
+            defaultValue='mp4'
+            control={control}
+            render={({ field }) => (
+              <Select {...field} labelId='select-format' label='Choose format'>
+                <MenuItem value='mp4'>MP4</MenuItem>
+                <MenuItem value='mxf'>MXF</MenuItem>
+              </Select>
+            )}
+          />
+          {errors?.format && <FormHelperText>{errors?.format?.message}</FormHelperText>}
         </FormControl>
 
         <Stack direction='row' spacing={2} my={2} divider={<Divider orientation='vertical' flexItem />}>

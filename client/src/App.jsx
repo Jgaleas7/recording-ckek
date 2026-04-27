@@ -23,6 +23,7 @@ function App() {
   const filterRecordsByCapturer = useRecordStore((state) => state.filterRecordsByCapturer)
   const changeActiveTabIndex = useRecordStore((state) => state.changeActiveTabIndex)
   const changeCapturer = useRecordStore((state) => state.changeCapturer)
+  const changeFormat = useRecordStore((state) => state.changeFormat)
   const [activeRecordRowId, setActiveRecordRowId] = useState(() => {
     const savedActiveRows = localStorage.getItem('activeRecordRows')
     return savedActiveRows ? JSON.parse(savedActiveRows) : {
@@ -34,6 +35,10 @@ function App() {
   })
   const [capturer, setCapturer] = useState(CAPTURERS.capturer1)
   const [format, setFormat] = useState('mp4')
+
+  useEffect(() => {
+    changeFormat(format)
+  }, [format])
   const [tabIndex, setTabIndex] = useState(0)
   const { Modal } = useBeforeUnload();
 

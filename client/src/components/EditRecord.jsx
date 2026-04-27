@@ -29,9 +29,10 @@ import Toast from '../utils/Toast'
 import recordApi from '../api/recordApi'
 
 const schema = yup.object().shape({
-  name: yup.string().required('El nombre es obligatorio'),
-  capturer: yup.string().required('El capturer es obligatorio'),
-  days: yup.array().of(yup.string()).min(1, 'Selecciona al menos 1 día de grabación'),
+  name: yup.string().required('The name is required'),
+  capturer: yup.string().required('The capturer is required'),
+  format: yup.string().oneOf(['mp4', 'mxf']).required('The format is required'),
+  days: yup.array().of(yup.string()).min(1, 'Select at least 1 day of recording'),
 })
 
 const EditRecord = ({ open, handleCloseDialog, selectedRow }) => {
@@ -57,7 +58,7 @@ const EditRecord = ({ open, handleCloseDialog, selectedRow }) => {
       year = date.getFullYear(),
       month = date.getMonth(),
       day = date.getDate(),
-      fields = ['name', 'capturer', 'days', 'startAt', 'endAt', 'chunkTime']
+      fields = ['name', 'capturer', 'format', 'days', 'startAt', 'endAt', 'chunkTime']
 
     if (selectedRow.length > 0) {
       fields.forEach((field) => {
@@ -94,6 +95,7 @@ const EditRecord = ({ open, handleCloseDialog, selectedRow }) => {
             start_at: startRecordAt.format('HH:mm:ss'),
             end_at: endRecordAt.format('HH:mm:ss'),
             capturer_id: Number(data?.capturer),
+            format: data?.format,
             chunk_time: chunkTime !== '00:00' ? data?.chunkTime : null
           }
         })
@@ -104,16 +106,16 @@ const EditRecord = ({ open, handleCloseDialog, selectedRow }) => {
         const res = await recordApi.post('/schedules/update', { newData: responseData, oldData: recordsDelete })
 
         if (res.status !== 200) {
-          throw new Error('Fallo al momento de actualizar el schedule')
+          throw new Error('Error updating the schedule')
         }
 
         addRecords(responseData)
         filterRecordsByCapturer(selectedCapturer)
-        Toast({ type: 'success', message: 'La grabación se actualizó correctamente' })
+        Toast({ type: 'success', message: 'The recording was updated successfully' })
       }
       /* reset({ name: '', capturer: '', days: [] }) */
     } catch (error) {
-      Toast({ type: 'error', message: 'Error al actualizar la grabación' })
+      Toast({ type: 'error', message: 'Error updating the recording' })
       console.log(error)
     }
   }
@@ -126,7 +128,7 @@ const EditRecord = ({ open, handleCloseDialog, selectedRow }) => {
           size='small'
           variant='outlined'
           fullWidth
-          label='Nombre de la grabación'
+          label='Name of the recording'
           error={Boolean(errors?.name?.message)}
           helperText={errors?.name?.message}
           {...register('name')}
@@ -138,7 +140,7 @@ const EditRecord = ({ open, handleCloseDialog, selectedRow }) => {
             defaultValue=''
             control={control}
             render={({ field }) => (
-              <Select {...field} labelId='select-capturer' label='Elija el capturer'>
+              <Select {...field} labelId='select-capturer' label='Select the capturer'>
                 <MenuItem value={1}>Capturer 1</MenuItem>
                 <MenuItem value={2}>Capturer 2</MenuItem>
                 <MenuItem value={3}>Capturer 3</MenuItem>
@@ -147,6 +149,22 @@ const EditRecord = ({ open, handleCloseDialog, selectedRow }) => {
             )}
           />
           {errors?.capturer && <FormHelperText>{errors?.capturer?.message}</FormHelperText>}
+        </FormControl>
+
+        <FormControl fullWidth sx={{ mb: 2 }} size='small' error={Boolean(errors?.format?.message)}>
+          <InputLabel id='select-format'>Select the format</InputLabel>
+          <Controller
+            name='format'
+            defaultValue='mp4'
+            control={control}
+            render={({ field }) => (
+              <Select {...field} labelId='select-format' label='Select the format'>
+                <MenuItem value='mp4'>MP4</MenuItem>
+                <MenuItem value='mxf'>MXF</MenuItem>
+              </Select>
+            )}
+          />
+          {errors?.format && <FormHelperText>{errors?.format?.message}</FormHelperText>}
         </FormControl>
 
         <Stack direction='row' spacing={2} my={2} divider={<Divider orientation='vertical' flexItem />}>
